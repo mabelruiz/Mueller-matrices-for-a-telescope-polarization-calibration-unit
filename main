@@ -1,0 +1,32 @@
+"""
+Script principal que demuestra el uso del sistema optico completo.
+"""
+
+import numpy as np
+from optical_system import OpticalSystem
+from visualization import OpticalSystemVisualizer
+
+def main():
+    # Creamos el sistema y el visualizador
+    system = OpticalSystem()
+    visualizer = OpticalSystemVisualizer(system)
+    
+    # Definimos rangos de angulos para las graficas
+    angle_range = np.linspace(0, 180, 181)  # 1 grado de resolucion (giro polarizador, giro retardador)
+    delta_range = np.linspace(0, 360, 73)   # 10 grados de resolucion (desfase)
+    
+    # Generamos las graficas
+    print("Generando grafica de Stokes vs angulo del polarizador...")
+    visualizer.plot_stokes_vs_angle(angle_range, delta=180, vary_component='polarizer')
+    
+    print("Generando grafica de Stokes vs angulo del retardador...")
+    visualizer.plot_stokes_vs_angle(angle_range, delta=127, vary_component='retarder')
+    
+    print("Generando grafica de estados vs desfase...")
+    visualizer.plot_states_vs_phase(delta_range, angle_resolution=10)
+    
+
+
+if __name__ == "__main__":
+    main()
+    
