@@ -1,0 +1,127 @@
+"""
+Este modulo contiene las implementaciones base de las matrices de Mueller.
+Proporciona las funcionalidades fundamentales para crear y manipular matrices
+de rotacion y matrices de Mueller para diferentes componentes opticos.
+"""
+
+import numpy as np
+from typing import Union, Tuple, List, Optional
+from dataclasses import dataclass
+from abc import ABC, abstractmethod
+
+@dataclass
+class StokesVector:
+    """
+    Clase para representar y manipular vectores de Stokes.
+    Encapsula las operaciones comunes sobre vectores de Stokes.
+    """
+    components: np.ndarray
+
+    @classmethod
+    def natural_light(cls) -> 'StokesVector':
+        """Crea un vector de Stokes para luz natural"""
+        return cls(np.array([1, 0, 0, 0]))
+
+    def __post_init__(self):
+        if self.components.shape != (4,):
+            raise ValueError("El vector de Stokes debe tener exactamente 4 componentes")
+
+class MuellerMatrix(ABC):
+    """
+    Clase base abstracta para todas las matrices de Mueller.
+    Define la interfaz comun para todos los componentes opticos.
+    """
+    @staticmethod
+    def rotation_matrix(theta: float) -> np.ndarray:
+        """
+        Crea una matriz de rotacion para un angulo theta.
+        
+        Args:
+            theta: angulo de rotacion en grados
+        
+        Returns:
+            Matriz de rotacion 4x4
+        """
+        theta_rad = np.deg2rad(theta)
+        cos2 = np.cos(2 * theta_rad)
+        sin2 = np.sin(2 * theta_rad)
+        
+        R = np.array([
+            [1, 0, 0, 0],
+            [0, cos2, sin2, 0],
+            [0, -sin2, cos2, 0],
+            [0, 0, 0, 1]
+        ])
+        
+        # Eliminar valores muy pequenos
+        R[np.abs(R) < 1e-5] = 0
+        return R
+
+    @abstractmethod
+    def get_matrix(self, theta: float = 0) -> np.ndarray:
+        pass
+
+class LinearPolarizer(MuellerMatrix):
+    """Implementacion de un polarizador lineal"""
+    
+    def get_matrix(self, theta: float = 0) -> np.ndarray:
+        """
+        Obtiene la matriz de Mueller para un polarizador lineal rotado.
+        
+        Args:
+            theta: angulo de rotacion en grados
+            
+        Returns:
+            Matriz de Mueller del polarizador
+        """
+        # Factor 1/2 para conservar la energia
+        M_pol = 0.5 * np.array([
+            [1, 1, 0, 0],
+            [1, 1, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0]
+        ])
+        
+        if theta == 0:
+            return M_pol
+            
+        R = self.rotation_matrix(theta)
+        R_inv = self.rotation_matrix(-theta)
+        result = R_inv @ M_pol @ R
+        
+        # Eliminar valores muy pequenos
+        result[np.abs(result) < 1e-10] = 0
+        return result
+
+class Retarder(MuellerMatrix):
+    """Implementacion de un retardador"""
+    
+    def get_matrix(self, theta: float = 0, delta: float = 0) -> np.ndarray:
+        """
+        Obtiene la matriz de Mueller para un retardador.
+        
+        Args:
+            theta: angulo de rotacion en grados
+            delta: angulo de desfase en grados
+            
+        Returns:
+            Matriz de Mueller del retardador
+        """
+        delta_rad = np.deg2rad(delta)
+        M_ret = np.array([
+            [1, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, np.cos(delta_rad), np.sin(delta_rad)],
+            [0, 0, -np.sin(delta_rad), np.cos(delta_rad)]
+        ])
+        
+        if theta == 0:
+            return M_ret
+            
+        R = self.rotation_matrix(theta)
+        R_inv = self.rotation_matrix(-theta)
+        result = R_inv @ M_ret @ R
+        
+        # Eliminar valores muy pequenos
+        result[np.abs(result) < 1e-10] = 0
+        return result
