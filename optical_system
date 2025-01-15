@@ -1,0 +1,112 @@
+"""
+Este módulo implementa el sistema óptico completo, integrando los componentes
+definidos en mueller_matrices.py y proporcionando métodos para analizar
+el comportamiento del sistema.
+"""
+
+import numpy as np
+from typing import Tuple, List, Optional
+from dataclasses import dataclass
+from mueller_matrices import StokesVector, LinearPolarizer, Retarder
+
+@dataclass
+class OpticalSystemState:
+    """
+    Clase para almacenar el estado del sistema óptico en un momento dado.
+    Mantiene los vectores de Stokes en diferentes puntos del sistema.
+    """
+    input_light: StokesVector
+    after_polarizer: Optional[StokesVector] = None
+    final_output: Optional[StokesVector] = None
+
+class OpticalSystem:
+    """
+    Clase principal que representa el sistema óptico completo.
+    Integra polarizadores y retardadores, y proporciona métodos para su análisis.
+    """
+    def __init__(self):
+        self.polarizer = LinearPolarizer()
+        self.retarder = Retarder()
+        
+    def propagate_light(self, 
+                       theta_pol: float,
+                       theta_ret: float,
+                       delta: float) -> OpticalSystemState:
+        """
+        Propaga la luz a través del sistema óptico completo.
+        
+        Args:
+            theta_pol: Ángulo del polarizador en grados
+            theta_ret: Ángulo del retardador en grados
+            delta: Ángulo de desfase en grados
+            
+        Returns:
+            Estado del sistema con los vectores de Stokes en cada etapa
+        """
+        # Creamos el estado inicial con luz natural
+        state = OpticalSystemState(input_light=StokesVector.natural_light())
+        
+        # Propagamos a través del polarizador
+        M_pol = self.polarizer.get_matrix(theta_pol)
+        state.after_polarizer = StokesVector(M_pol @ state.input_light.components)
+        
+        # Propagamos a través del retardador
+        M_ret = self.retarder.get_matrix(theta_ret, delta)
+        state.final_output = StokesVector(M_ret @ state.after_polarizer.components)
+        
+        return state
+
+    def scan_angles(self, 
+                   angle_range: np.ndarray,
+                   delta: float,
+                   vary_component: str = 'polarizer') -> np.ndarray:
+        """
+        Realiza un barrido de ángulos para un componente específico.
+        
+        Args:
+            angle_range: Array de ángulos a evaluar
+            delta: Ángulo de desfase en grados
+            vary_component: 'polarizer' o 'retarder'
+            
+        Returns:
+            Array con los vectores de Stokes de salida para cada ángulo
+        """
+        output_states = []
+        
+        for angle in angle_range:
+            theta_pol = angle if vary_component == 'polarizer' else 0
+            theta_ret = angle if vary_component == 'retarder' else 0
+            
+            state = self.propagate_light(theta_pol, theta_ret, delta)
+            output_states.append(state.final_output.components)
+            
+        return np.array(output_states)
+
+    def calculate_unique_states(self, 
+                              delta_range: np.ndarray,
+                              angle_resolution: float = 5) -> Tuple[List[int], np.ndarray]:
+        """
+        Calcula el número de estados únicos para diferentes desfases.
+        
+        Args:
+            delta_range: Array de ángulos de desfase a evaluar
+            angle_resolution: Resolución angular para el barrido
+            
+        Returns:
+            Número de estados únicos para cada desfase y array de desfases
+        """
+        angle_range = np.arange(0, 180, angle_resolution)
+        unique_states_count = []
+        
+        for delta in delta_range:
+            states = []
+            for theta_pol in angle_range:
+                for theta_ret in angle_range:
+                    state = self.propagate_light(theta_pol, theta_ret, delta)
+                    states.append(tuple(state.final_output.components))
+                    
+            # Consideramos estados únicos con tolerancia numérica
+            unique_states = set([tuple(np.round(state, decimals=6)) for state in states])
+            unique_states_count.append(len(unique_states))
+        
+        return unique_states_count, delta_range
