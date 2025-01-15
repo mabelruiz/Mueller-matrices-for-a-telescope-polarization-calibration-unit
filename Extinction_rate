@@ -1,0 +1,128 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Jan 15 12:38:31 2025
+
+@author: mabelruiz
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Define el rango de ángulos en grados
+angle_degrees = np.linspace(0, 90, 10)
+angle_radians = np.deg2rad(angle_degrees)
+# Calcula la transmitancia
+transmittance = np.cos(angle_radians)**2
+
+# Calcula el coeficiente de extinción (como ratio)
+extinction_ratio = 1 / transmittance
+
+'''
+Recibe un ángulo de desalineamiento en grados
+Calcula cuánto se desvía de 90° (que es la posición de polarizadores cruzados)
+Convierte el ángulo a radianes (porque numpy trabaja en radianes)
+Usa la ley de Malus para calcular la transmitancia (cos²θ)
+Devuelve el inverso de la transmitancia, que es el coeficiente de extinción
+
+Por ejemplo:
+
+Si el desalineamiento es 0°, los polarizadores están perfectamente cruzados (90°)
+Si el desalineamiento es 1°, los polarizadores están a 89° entre sí
+'''
+
+
+
+# Grafica
+plt.figure(figsize=(10, 6))
+plt.semilogy(angle_degrees, extinction_ratio, label='Extinction Ratio', color='blue')
+plt.grid(True, which="both", linestyle='--')
+plt.xlabel(r'$\Delta\theta$ (degrees)', fontsize=14)
+plt.ylabel('Extinction Ratio (1:X)', fontsize=14)
+plt.title('Extinction Ratio vs Misalignment Angle', fontsize=16)
+plt.xticks(np.arange(0, 91, 10))
+plt.legend(fontsize=12)
+plt.show()
+
+# Función para calcular el coeficiente de extinción dado un ángulo
+def get_extinction_ratio(angle_deg):
+    angle_rad = np.deg2rad(90 - angle_deg)  # Desviación desde 90°
+    return 1 / (np.cos(angle_rad)**2)
+
+# Buscamos el ángulo que da un ratio de 1:10000
+target_ratio = 10000
+misalignment = 0.0
+
+for angle in np.arange(0, 5, 0.0001):  # Búsqueda fina entre 0 y 5 grados
+    ratio = get_extinction_ratio(angle)
+    if ratio <= target_ratio:
+        misalignment = angle
+        break
+
+'''
+Prueba ángulos desde 0° hasta 5° en pasos muy pequeños (0.0001°)
+Para cada ángulo, calcula el coeficiente de extinción
+Cuando encuentra el primer ángulo que da un coeficiente menor o igual al que buscamos (1:10000), se detiene
+Ese ángulo es el máximo desalineamiento permitido para conseguir el coeficiente deseado
+
+¿Por qué funciona así?
+
+Si los polarizadores están perfectamente cruzados (90°), el coeficiente de extinción es teóricamente infinito
+Cualquier desviación de 90° reduce el coeficiente de extinción
+Cuanto mayor es la desviación, menor es el coeficiente
+Por eso buscamos el primer ángulo que nos da un coeficiente igual o menor al que queremos
+'''
+
+print(f"Para un coeficiente de extinción de 1:{target_ratio}")
+print(f"El error de alineamiento es de aproximadamente {misalignment:.3f} grados")
+
+# Crear array de ángulos
+angles = np.linspace(0, 5, 1000)  # ángulos de 0 a 2 grados
+
+# Calcular los coeficientes de extinción
+ratios = 1 / (np.cos(np.deg2rad(90 - angles))**2)
+
+# Crear el gráfico
+plt.figure(figsize=(10, 6))
+plt.semilogy(angles, ratios, 'b-', label='Coeficiente de extinción')
+
+# Marcar los puntos específicos
+specific_ratios = [100, 1000, 10000, 100000, 1000000]
+specific_angles = []
+
+# Encontrar los ángulos para los ratios específicos
+for ratio in specific_ratios:
+    angle = np.arccos(1/np.sqrt(ratio)) * (180/np.pi)
+    specific_angles.append(angle)
+
+plt.plot(specific_angles, specific_ratios, 'ro', markersize=10)
+
+# Añadir etiquetas para los puntos específicos
+for angle, ratio in zip(specific_angles, specific_ratios):
+    plt.annotate(f'1:{ratio}\n{angle:.3f}°', 
+                xy=(angle, ratio), 
+                xytext=(18, 18),
+                textcoords='offset points',
+                ha='left')
+
+# Configurar el gráfico
+plt.grid(True, which="both", ls="--", alpha=0.2)
+plt.xlabel('Missalignment angle (degrees)', fontsize=16)
+plt.ylabel('Extintion rate (1:X)', fontsize=16)
+#plt.title('Coeficiente de Extinción vs Ángulo de Desalineamiento', fontsize=14)
+plt.tick_params(axis='both', which='major', labelsize=12)
+
+
+
+# Ajustar los límites
+plt.xlim(0, 3)
+plt.ylim(100, 1000000)
+
+# Mostrar el gráfico
+plt.tight_layout()
+plt.show()
+
+# Imprimir los valores específicos
+print("\nValores específicos:")
+for angle, ratio in zip(specific_angles, specific_ratios):
+    print(f"Ángulo: {angle:.3f}° -> Coeficiente 1:{ratio}")
+
