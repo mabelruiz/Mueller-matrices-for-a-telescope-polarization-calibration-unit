@@ -1,0 +1,73 @@
+"""Este módulo maneja toda la visualización de datos del sistema óptico.
+Proporciona funciones para crear gráficas de los vectores de Stokes
+y otros parámetros del sistema.
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+from typing import List, Tuple
+from optical_system import OpticalSystem
+
+f=16
+
+class OpticalSystemVisualizer:
+    """
+    Clase para manejar la visualización de datos del sistema óptico.
+    Separa la lógica de visualización del resto del sistema.
+    """
+    def __init__(self, system: OpticalSystem):
+        self.system = system
+
+    def plot_stokes_vs_angle(self,
+                            angle_range: np.ndarray,
+                            delta: float,
+                            vary_component: str = 'polarizer') -> None:
+        """
+        Grafica los componentes del vector de Stokes vs ángulo.
+        
+        Args:
+            angle_range: Array de ángulos a evaluar
+            delta: Ángulo de desfase en grados
+            vary_component: 'polarizer' o 'retarder'
+        """
+        output_states = self.system.scan_angles(angle_range, delta, vary_component)
+
+        labels = ['I', 'Q', 'U', 'V']
+        colors = ['blue', 'green', 'red', 'orange']  # Colores para cada componente
+        component_name = "Polarizador" if vary_component == "polarizer" else "Retardador"
+
+        fig, axes = plt.subplots(4, 1, figsize=(10, 8), sharex=True)
+        for i, ax in enumerate(axes):
+            ax.plot(angle_range, output_states[:, i], label=labels[i], color=colors[i])
+            ax.set_ylabel(labels[i])
+            ax.grid(True)
+            ax.legend(loc="upper right")
+            if labels[i] == 'I':
+                ax.set_ylim(0, 1.1)  # Limites para el eje vertical de I
+            else: ax.set_ylim(-1.1, 1.1)  # Limites para el eje vertical de I
+
+        axes[-1].set_xlabel('Ángulo (grados)', fontsize=f)
+        fig.suptitle(f'Componentes de Stokes vs Ángulo del {component_name}', fontsize=f)
+        plt.tight_layout(rect=[0, 0, 1, 0.95])
+        plt.show()
+
+    def plot_states_vs_phase(self,
+                            delta_range: np.ndarray,
+                            angle_resolution: float = 5) -> None:
+        """
+        Grafica el número de estados únicos vs desfase.
+        
+        Args:
+            delta_range: Array de ángulos de desfase a evaluar
+            angle_resolution: Resolución angular para el barrido
+        """
+        unique_states, deltas = self.system.calculate_unique_states(
+            delta_range, angle_resolution)
+
+        plt.figure(figsize=(10, 6))
+        plt.plot(deltas, unique_states, '-o')
+        plt.xlabel('Ángulo de desfase (grados)', fontsize=f)
+        plt.ylabel('Número de estados únicos', fontsize=f)
+        plt.title('Número de estados únicos vs Ángulo de desfase')
+        plt.grid(True)
+        plt.show()
